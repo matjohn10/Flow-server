@@ -1,3 +1,5 @@
+import { Player } from "../types/game";
+
 export const genId5 = (): string => {
   const chars =
     "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -10,4 +12,15 @@ export const genId5 = (): string => {
   }
 
   return password;
+};
+
+export const AddPlayerIfNew = (player: Player, arr: string[]): string[] => {
+  const found = arr.find((p) => {
+    const inPlayer = JSON.parse(p) as Player;
+    return inPlayer.playerId === player.playerId;
+  });
+  if (!found) {
+    return [...arr, JSON.stringify(player)];
+  }
+  return [...arr];
 };
