@@ -24,3 +24,14 @@ export const AddPlayerIfNew = (player: Player, arr: string[]): string[] => {
   }
   return [...arr];
 };
+
+export const RemovePlayer = (playerId: string, arr: string[]): string[] => {
+  return arr.filter((p) => {
+    const inPlayer = JSON.parse(p) as Player;
+    return inPlayer.playerId !== playerId;
+  });
+};
+
+export const ParseToPlayer = (player: string): Player => {
+  return JSON.parse(player) as Player;
+};

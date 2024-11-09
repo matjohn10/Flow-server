@@ -2,9 +2,10 @@ import mongoose from "mongoose";
 
 const PlayersSchema = new mongoose.Schema({
   playerId: String,
-  username: { type: String, default: undefined },
-  color: { type: String, default: undefined },
-  icon: { type: String, default: undefined },
+  socketId: String,
+  // username: { type: String, default: undefined },
+  // color: { type: String, default: undefined },
+  // icon: { type: String, default: undefined },
 });
 
 const PlayersModel = mongoose.model("Players", PlayersSchema);

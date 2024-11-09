@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const GamesSchema = new mongoose.Schema({
   gameId: String,
+  creator: String,
   // players are stringified PLAYERMODELS
   players: { type: [String], default: [] },
 });
