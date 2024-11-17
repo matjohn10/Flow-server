@@ -9,3 +9,9 @@ export type JoinRoomObject = {
   roomId: string;
   player: Player;
 };
+
+type PlayerContent = {
+  guesses: string[];
+  drawings: string[];
+};
+export type GameContent = PlayerContent[];

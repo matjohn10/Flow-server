@@ -7,12 +7,15 @@ import { Server } from "socket.io";
 import bodyParser from "body-parser";
 import {
   AddPlayerIfNew,
+  FindRankOfPlayer,
   genId5,
-  ParseToPlayer,
+  GetFromContent,
+  GetGameTemplate,
+  GetNumEntries,
   RemovePlayer,
 } from "./utils/helpers";
 import ConnectDB from "./utils/mongodb";
-import { JoinRoomObject, Player } from "./types/game";
+import { GameContent, JoinRoomObject, Player } from "./types/game";
 import GamesModel from "./models/games";
 import game from "./routes/games";
 import PlayersModel from "./models/players";
@@ -51,6 +54,7 @@ io.on("connection", async (socket) => {
     socket.join(roomId);
     const game = {
       gameId: roomId,
+      round: 1,
       creator: createObject.playerId,
       players: [createString],
     };
@@ -89,6 +93,75 @@ io.on("connection", async (socket) => {
       );
     }
   });
+
+  socket.on("game-started", async (gameId: string) => {
+    const game = await GamesModel.findOne({ gameId }).exec();
+    if (!game) return;
+    const content: GameContent = game.players.map((p) => {
+      return {
+        guesses: [],
+        drawings: [],
+      };
+    });
+    await game.updateOne({ content }).exec();
+
+    io.to(gameId).emit("game-started");
+  });
+  socket.on(
+    "init-entry",
+    async (gameId: string, kind: "guesses" | "drawings") => {
+      const game = await GamesModel.findOne({ gameId }).exec();
+      if (!game) return;
+      const numDone = GetNumEntries(game.content, kind, game.round);
+      io.in(gameId).emit("num-entry", numDone);
+    }
+  );
+
+  socket.on("ready", async (gameId: string, round: number) => {
+    const game = await GamesModel.findOne({ gameId }).exec();
+    if (!game) return;
+    const currRound = game.round;
+    const currPlayer = await PlayersModel.findOne({
+      socketId: socket.id,
+    }).exec();
+    if (!currPlayer) return; // TODO: should notify everyone and if creator, kick everyone off game
+    // if creator, update game rounds + 1
+    if (currPlayer.playerId === game.creator) {
+      await game.updateOne({ round: currRound + 1 }).exec();
+      // Does not update right away even with queryInvalidation, try emitting round #
+      io.in(gameId).emit("round-update");
+    }
+
+    const template = GetGameTemplate(game.players.length);
+    const from = GetFromContent(
+      template,
+      FindRankOfPlayer(game?.players ?? [], currPlayer?.playerId ?? "")
+    );
+    if (from === null || from === undefined) {
+      console.log("NO FROM:", currPlayer?.playerId);
+      // tell clients someone left current game, kick everyone out (unplayable)
+      io.in(gameId).emit("player-out");
+      return;
+    }
+    // content sent is drawing if new round odd, guesses if even
+    // console.log("Round:", round, currRound, currPlayer?.playerId);
+    const roundIndex =
+      currRound % 2 !== 0 ? Math.floor(currRound / 2) : currRound / 2 - 1;
+    const content =
+      currRound % 2 !== 0
+        ? game.content[from].guesses[roundIndex]
+        : game.content[from].drawings[roundIndex];
+
+    // console.log("READY:", currPlayer.playerId, content);
+    io.in(currPlayer.playerId ?? "").emit(
+      "round-content",
+      JSON.stringify({
+        content,
+        kind: currRound % 2 !== 0 ? "guesses" : "drawings",
+      })
+    );
+  });
+
   socket.on("player-out", async (gameId: string) => {
     const player = await PlayersModel.findOne({ socketId: socket.id })
       .select("playerId")
@@ -133,15 +206,23 @@ io.on("connection", async (socket) => {
       players: player.playerId,
     }).exec();
     for (let playGame of playGames) {
+      console.log("LEFT GAME:", playGame.gameId, player.playerId);
       await playGame.updateOne({
         players: RemovePlayer(player.playerId ?? "", playGame.players),
       });
-      io.to(playGame.gameId ?? "").emit("player-out", player.playerId);
+      io.in(playGame.gameId ?? "").emit("player-out", player.playerId);
     }
     // delete the player from DB
     await player.deleteOne().exec();
-    console.log("A client disconnected");
+    console.log("A client disconnected -", player.playerId);
   });
+});
+
+io.engine.on("connection_error", (err) => {
+  console.error("ERROR (req): ", err.req); // the request object
+  console.error("ERROR (code): ", err.code); // the error code, for example 1
+  console.error("ERROR (msg): ", err.message); // the error message, for example "Session ID unknown"
+  console.error("ERROR (ctx): ", err.context); // some additional error context
 });
 
 app.get("/", (req: Request, res: Response) => {
