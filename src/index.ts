@@ -19,6 +19,7 @@ import { GameContent, JoinRoomObject, Player } from "./types/game";
 import GamesModel from "./models/games";
 import game from "./routes/games";
 import PlayersModel from "./models/players";
+import tests from "./routes/tests";
 
 export const app: Express = express();
 app.use(cors({ origin: "http://localhost:5173" }));
@@ -73,6 +74,7 @@ io.on("connection", async (socket) => {
     if (!currGame) {
       io.to(joinRoomObject.player.playerId).emit("join-error", "Wrong game id");
       //console.error("Game not found:", joinRoomObject.roomId);
+      return;
     } else {
       // add user to room
       socket.join(joinRoomObject.roomId);
@@ -107,6 +109,7 @@ io.on("connection", async (socket) => {
 
     io.to(gameId).emit("game-started");
   });
+
   socket.on(
     "init-entry",
     async (gameId: string, kind: "guesses" | "drawings") => {
@@ -228,6 +231,7 @@ io.engine.on("connection_error", (err) => {
 app.get("/", (req: Request, res: Response) => {
   res.send("Hello World!");
 });
+app.use("/tests", tests);
 
 app.use("/game", game);
 
