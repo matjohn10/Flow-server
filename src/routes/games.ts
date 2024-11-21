@@ -17,6 +17,21 @@ game.get("/:id", async (req: Request, res: Response) => {
     round: game.round,
   });
 });
+game.get("/full/:id", async (req: Request, res: Response) => {
+  const gameId = req.params.id;
+  const game = await GamesModel.findOne({ gameId }).exec();
+  if (!game) {
+    res.status(404);
+    return;
+  }
+  res.json({
+    gameId: game.gameId,
+    creator: game.creator,
+    players: game.players,
+    round: game.round,
+    content: game.content,
+  });
+});
 
 game.post("/entry/:id", async (req: Request, res: Response) => {
   const gameId = req.params.id;

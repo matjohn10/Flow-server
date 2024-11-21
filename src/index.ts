@@ -160,6 +160,7 @@ io.on("connection", async (socket) => {
       "round-content",
       JSON.stringify({
         content,
+        time: Date.now(),
         kind: currRound % 2 !== 0 ? "guesses" : "drawings",
       })
     );
