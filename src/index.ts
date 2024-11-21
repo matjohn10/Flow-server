@@ -166,6 +166,16 @@ io.on("connection", async (socket) => {
     );
   });
 
+  socket.on("show-player", (gameId: string, rank: number) => {
+    console.log("EMITTED SHOW:", rank);
+    io.to(gameId).emit("show-player", rank);
+  });
+
+  socket.on("show-next", (gameId: string, sliceShown: number) => {
+    console.log("EMITTED NEXT:", sliceShown);
+    io.to(gameId).emit("show-next", sliceShown);
+  });
+
   socket.on("player-out", async (gameId: string) => {
     const player = await PlayersModel.findOne({ socketId: socket.id })
       .select("playerId")

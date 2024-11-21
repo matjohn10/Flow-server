@@ -2,28 +2,40 @@
   "gameId": "kLgx8",
   "content": [
     {
-      "drawings": ["drawing the guess of 3", "drawing the guess of 3"],
+      "drawings": [
+        "https://placehold.co/600x400.png",
+        "https://placehold.co/600x400.png"
+      ],
       "guesses": ["init guess", "guessing drawing of 3"]
     },
     {
-      "drawings": ["drawing the guess of 0", "drawing the guess of 0"],
+      "drawings": [
+        "https://placehold.co/600x400.png",
+        "https://placehold.co/600x400.png"
+      ],
       "guesses": ["init guess", "guessing drawing of 0"]
     },
     {
-      "drawings": ["drawing the guess of 1", "drawing the guess of 1"],
+      "drawings": [
+        "https://placehold.co/600x400.png",
+        "https://placehold.co/600x400.png"
+      ],
       "guesses": ["init guess", "guessing drawing of 1"]
     },
     {
-      "drawings": ["drawing the guess of 2", "drawing the guess of 2"],
+      "drawings": [
+        "https://placehold.co/600x400.png",
+        "https://placehold.co/600x400.png"
+      ],
       "guesses": ["init guess", "guessing drawing of 2"]
     }
   ],
   "players": [
-    "{\"playerId\":\"13a8694d-de7e-484a-93fe-4bcf63e08964\",\"username\":\"1\",\"color\":\"#ff0000\",\"icon\":\"lion\"}",
-    "{\"playerId\":\"8195f140-f595-478f-9952-5e053cdcf8b7\",\"username\":\"2\",\"color\":\"#ff0000\",\"icon\":\"lion\"}",
-    "{\"playerId\":\"ad8f18a9-84fb-4ab5-94a5-2eaf0d1f9ad0\",\"username\":\"3\",\"color\":\"#ff0000\",\"icon\":\"lion\"}",
-    "{\"playerId\":\"8c205794-a95f-4095-9ffd-819c9e83a840\",\"username\":\"4\",\"color\":\"#ff0000\",\"icon\":\"lion\"}"
+    "{\"playerId\":\"3f7bd706-07c4-44a8-b5e9-f0efe89f1be0\",\"username\":\"mat1\",\"color\":\"#ff0000\",\"icon\":\"lion\"}",
+    "{\"playerId\":\"8195f140-f595-478f-9952-5e053cdcf8b7\",\"username\":\"jb2\",\"color\":\"#ffff00\",\"icon\":\"horse\"}",
+    "{\"playerId\":\"ad8f18a9-84fb-4ab5-94a5-2eaf0d1f9ad0\",\"username\":\"thebest3\",\"color\":\"#00ff00\",\"icon\":\"fox\"}",
+    "{\"playerId\":\"8c205794-a95f-4095-9ffd-819c9e83a840\",\"username\":\"random4\",\"color\":\"#00ffff\",\"icon\":\"bear\"}"
   ],
-  "creator": "13a8694d-de7e-484a-93fe-4bcf63e08964",
+  "creator": "3f7bd706-07c4-44a8-b5e9-f0efe89f1be0",
   "round": 5
 }

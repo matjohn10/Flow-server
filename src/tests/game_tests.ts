@@ -112,3 +112,9 @@ export function getFullPlayerTelestration(playerRank: number): string {
   }
   return rounds + "END";
 }
+
+export function getGameJSON() {
+  const file = fs.readFileSync("./game.json", "utf8");
+  const game = JSON.parse(file) as Game;
+  return game;
+}
