@@ -12,13 +12,17 @@ import {
   GetFromContent,
   GetGameTemplate,
   GetNumEntries,
+  ParseToPlayer,
   RemovePlayer,
 } from "./utils/helpers";
 import ConnectDB from "./utils/mongodb";
 import { GameContent, JoinRoomObject, Player } from "./types/game";
 import GamesModel from "./models/games";
 import game from "./routes/games";
-import PlayersModel from "./models/players";
+import PlayersModel, {
+  removePlayerGame,
+  updatePlayerGames,
+} from "./models/players";
 import tests from "./routes/tests";
 
 export const app: Express = express();
@@ -47,6 +51,13 @@ io.on("connection", async (socket) => {
       { socketId: socket.id, playerId: id },
       { upsert: true }
     ).exec();
+
+    // Reconnect to current/existing games
+    // TODO: Check game exist before rejoining
+    const player = await PlayersModel.findOne({ playerId: id }).exec();
+    if (!player) return;
+    player.games.forEach((g) => socket.join(g));
+    console.log("ROOMS", socket.rooms);
   });
   // creates a room and add user id to it
   socket.on("create-room", async (createString: string) => {
@@ -61,6 +72,7 @@ io.on("connection", async (socket) => {
     };
     const newGame = new GamesModel(game);
     await newGame.save();
+    await updatePlayerGames(createObject.playerId, roomId);
     io.to(createObject.playerId).emit("room-id", roomId);
   });
   // join existing room using roomId and add user id to it
@@ -88,8 +100,12 @@ io.on("connection", async (socket) => {
         players: AddPlayerIfNew(joinRoomObject.player, currGame.players),
       };
       await currGame.updateOne(game);
+      await updatePlayerGames(
+        joinRoomObject.player.playerId,
+        joinRoomObject.roomId
+      );
       //emit new player arrival in game room
-      io.to(joinRoomObject.roomId).emit(
+      io.in(joinRoomObject.roomId).emit(
         "room-in",
         JSON.stringify(joinRoomObject.player)
       );
@@ -105,7 +121,7 @@ io.on("connection", async (socket) => {
         drawings: [],
       };
     });
-    await game.updateOne({ content }).exec();
+    await game.updateOne({ content, status: "play" }).exec();
 
     io.to(gameId).emit("game-started");
   });
@@ -128,7 +144,8 @@ io.on("connection", async (socket) => {
       socketId: socket.id,
     }).exec();
     if (!currPlayer) {
-      // Notify everyone and kick everyone off game
+      // Notify everyone and kick everyone off game, game wrongly setup
+      // Player should be in game
       io.in(gameId).emit("player-out");
       return;
     }
@@ -146,7 +163,7 @@ io.on("connection", async (socket) => {
     );
     if (from === null || from === undefined) {
       console.log("NO FROM:", currPlayer?.playerId);
-      // tell clients someone left current game, kick everyone out (unplayable)
+      // (unplayable) - game wrongly set up
       io.in(gameId).emit("player-out");
       return;
     }
@@ -169,6 +186,15 @@ io.on("connection", async (socket) => {
     );
   });
 
+  socket.on("game-end", async (gameId: string) => {
+    const game = await GamesModel.findOne({ gameId }).exec();
+    if (!game) {
+      io.in(gameId).emit("room-off");
+      return;
+    }
+    await game.updateOne({ status: "end" });
+  });
+
   socket.on("show-player", (gameId: string, rank: number) => {
     io.to(gameId).emit("show-player", rank);
   });
@@ -186,50 +212,51 @@ io.on("connection", async (socket) => {
     }
     // find game
     const game = await GamesModel.findOne({ gameId }).exec();
-    if (game && (game?.creator ?? "-1") === player.playerId) {
-      // Send to all members that room is off
-      io.to(game.gameId ?? "").emit("room-off");
-      // delete the game from DB
-      await game.deleteOne().exec();
-    } else {
-      // if not creator, just say player left
-      await game?.updateOne({
-        players: RemovePlayer(player.playerId ?? "", game.players),
-      });
-      io.to(game?.gameId ?? "").emit("player-out", player.playerId);
+    if (!game) {
+      io.in(gameId).emit("room-off");
+      socket.leave(gameId);
+      await removePlayerGame(player.playerId ?? "", gameId);
+      return;
     }
+    if (game.creator === player.playerId) {
+      // If creator leaves at wait/end game, delegate role (if no players, delete game)
+      if (game.status !== "play" && game.players.length > 1) {
+        // delegate role to next player
+        await game.updateOne({
+          creator: ParseToPlayer(game.players[1]).playerId,
+          players: RemovePlayer(player.playerId ?? "", game.players),
+        });
+        io.in(game.gameId ?? "").emit("player-out", player.playerId);
+      } else {
+        // delete the game from DB
+        await game.deleteOne().exec();
+        // Send to all members that room is off
+        io.in(game.gameId ?? "").emit("room-off");
+      }
+    } else {
+      // if not creator
+      if (game.status === "play") {
+        // game start status, so end game
+        await game.deleteOne().exec();
+        io.in(game.gameId ?? "").emit("room-off");
+      } else {
+        // game with less player is fine at wait and end
+        await game.updateOne({
+          players: RemovePlayer(player.playerId ?? "", game.players),
+        });
+        io.in(game.gameId ?? "").emit("player-out", player.playerId);
+      }
+    }
+    // Leave the current game room
+    socket.leave(game.gameId ?? "");
+    await removePlayerGame(player.playerId ?? "", game.gameId ?? "");
   });
 
   socket.on("disconnect", async () => {
     const player = await PlayersModel.findOne({ socketId: socket.id })
       .select("playerId")
       .exec();
-    if (!player) {
-      return;
-    }
-    // find games player created
-    const games = await GamesModel.find({ creator: player.playerId }).exec();
-    for (let game of games) {
-      // Send to all members that room is off
-      io.to(game.gameId ?? "").emit("room-off");
-      // delete the game from DB
-      await game.deleteOne().exec();
-    }
-
-    // find games player is part of
-    const playGames = await GamesModel.find({
-      players: player.playerId,
-    }).exec();
-    for (let playGame of playGames) {
-      console.log("LEFT GAME:", playGame.gameId, player.playerId);
-      await playGame.updateOne({
-        players: RemovePlayer(player.playerId ?? "", playGame.players),
-      });
-      io.in(playGame.gameId ?? "").emit("player-out", player.playerId);
-    }
-    // delete the player from DB
-    await player.deleteOne().exec();
-    console.log("A client disconnected -", player.playerId);
+    console.log("A client disconnected -", player?.playerId);
   });
 });
 

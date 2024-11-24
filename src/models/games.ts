@@ -8,6 +8,11 @@ const PlayerContentSchema = new mongoose.Schema({
 const GamesSchema = new mongoose.Schema({
   gameId: String,
   creator: String,
+  status: {
+    type: String,
+    enum: ["wait", "play", "end"],
+    default: "wait",
+  },
   round: { type: Number, default: 1 },
   // players are stringified PLAYERMODELS
   players: { type: [String], default: [] },
