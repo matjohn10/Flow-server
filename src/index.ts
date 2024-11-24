@@ -127,7 +127,11 @@ io.on("connection", async (socket) => {
     const currPlayer = await PlayersModel.findOne({
       socketId: socket.id,
     }).exec();
-    if (!currPlayer) return; // TODO: should notify everyone and if creator, kick everyone off game
+    if (!currPlayer) {
+      // Notify everyone and kick everyone off game
+      io.in(gameId).emit("player-out");
+      return;
+    }
     // if creator, update game rounds + 1
     if (currPlayer.playerId === game.creator) {
       await game.updateOne({ round: currRound + 1 }).exec();
@@ -155,8 +159,7 @@ io.on("connection", async (socket) => {
         ? game.content[from].guesses[roundIndex]
         : game.content[from].drawings[roundIndex];
 
-    // console.log("READY:", currPlayer.playerId, content);
-    io.in(currPlayer.playerId ?? "").emit(
+    socket.emit(
       "round-content",
       JSON.stringify({
         content,
@@ -167,12 +170,10 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("show-player", (gameId: string, rank: number) => {
-    console.log("EMITTED SHOW:", rank);
     io.to(gameId).emit("show-player", rank);
   });
 
   socket.on("show-next", (gameId: string, sliceShown: number) => {
-    console.log("EMITTED NEXT:", sliceShown);
     io.to(gameId).emit("show-next", sliceShown);
   });
 

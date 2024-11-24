@@ -85,3 +85,11 @@ export const FindRankOfPlayer = (players: string[], id: string): number => {
   }
   return -1;
 };
+
+export const isPlayerOfGame = (players: string[], playerId: string) => {
+  for (let i = 0; i < players.length; i++) {
+    const p = ParseToPlayer(players[i]);
+    if (p.playerId === playerId) return true;
+  }
+  return false;
+};

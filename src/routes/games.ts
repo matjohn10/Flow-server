@@ -1,6 +1,7 @@
 import express from "express";
 import { Request, Response } from "express";
 import GamesModel from "../models/games";
+import { isPlayerOfGame } from "../utils/helpers";
 const game = express.Router();
 
 game.get("/:id", async (req: Request, res: Response) => {
@@ -31,6 +32,22 @@ game.get("/full/:id", async (req: Request, res: Response) => {
     round: game.round,
     content: game.content,
   });
+});
+
+game.get("/check/:id/:player", async (req: Request, res: Response) => {
+  const gameId = req.params.id;
+  const player = req.params.player;
+  const game = await GamesModel.findOne({ gameId }).exec();
+
+  if (!game) {
+    res.json({
+      status: !!game,
+    });
+  } else {
+    res.json({
+      status: isPlayerOfGame(game.players, player),
+    });
+  }
 });
 
 game.post("/entry/:id", async (req: Request, res: Response) => {
