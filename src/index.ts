@@ -53,10 +53,18 @@ io.on("connection", async (socket) => {
     ).exec();
 
     // Reconnect to current/existing games
-    // TODO: Check game exist before rejoining
     const player = await PlayersModel.findOne({ playerId: id }).exec();
     if (!player) return;
-    player.games.forEach((g) => socket.join(g));
+    const deletedGames: string[] = [];
+    player.games.forEach(async (g) => {
+      const game = await GamesModel.findOne({ gameId: g }).exec();
+      if (!!game) socket.join(g);
+      else deletedGames.push(g);
+    });
+    if (deletedGames.length > 0)
+      await player.updateOne({
+        games: player.games.filter((g) => !deletedGames.includes(g)),
+      });
     console.log("ROOMS", socket.rooms);
   });
   // creates a room and add user id to it
@@ -220,7 +228,7 @@ io.on("connection", async (socket) => {
     }
     if (game.creator === player.playerId) {
       // If creator leaves at wait/end game, delegate role (if no players, delete game)
-      if (game.status !== "play" && game.players.length > 1) {
+      if (game.status == "wait" && game.players.length > 1) {
         // delegate role to next player
         await game.updateOne({
           creator: ParseToPlayer(game.players[1]).playerId,
@@ -235,12 +243,12 @@ io.on("connection", async (socket) => {
       }
     } else {
       // if not creator
-      if (game.status === "play") {
+      if (game.status !== "wait") {
         // game start status, so end game
         await game.deleteOne().exec();
         io.in(game.gameId ?? "").emit("room-off");
       } else {
-        // game with less player is fine at wait and end
+        // game with less player is fine at wait
         await game.updateOne({
           players: RemovePlayer(player.playerId ?? "", game.players),
         });
