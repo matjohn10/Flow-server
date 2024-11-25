@@ -25,14 +25,18 @@ import PlayersModel, {
 } from "./models/players";
 import tests from "./routes/tests";
 
+// TODO: Add prod URL
+
 export const app: Express = express();
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(
+  cors({ origin: ["http://localhost:5173", process.env.PROD_URL ?? ""] })
+);
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 export const server = http.createServer(app);
 export const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173", process.env.PROD_URL ?? ""],
   },
 });
 dotenv.config();
